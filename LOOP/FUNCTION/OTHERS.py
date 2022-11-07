@@ -55,9 +55,21 @@ years = 0
 balance = deposit
 
 while not(balance > target):
+
     balance = balance * (1 + interest_rate)
     #years = years + 1
     years += 1
     print(years, balance)
 
 print(years)
+
+x = "string"
+l = len(x)
+for i in range(l):
+    print(x[i],x[l-1-i])
+
+
+fruits = ["banana","apple","orange","apricot"]
+for i in range(len(fruits)):
+    fruit = fruits[i]
+    print("the name of fruits:", fruit)
