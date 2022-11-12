@@ -20,39 +20,21 @@ from scipy.stats import spearmanr
 from sklearn.feature_selection import mutual_info_classif
 from scipy.stats import pearsonr
 
-
-# In[2]:
-
-
+'''reading the file'''
 data = pd.read_csv("kidney_disease.csv")
 df = data.drop("id", axis = 1)
 df
 
-
-# In[3]:
-
-
 df.info()
-
-
-# In[4]:
-
 
 '''Total NAs'''
 df_na_count = df.isna().sum().sum()
 df_na_count
 
 
-# In[5]:
-
-
 '''Total count of values in DF'''
 df_total_val = df.count().sum()
 df_total_val
-
-
-# In[6]:
-
 
 '''Percentage of NAs in entire df'''
 na_perc = df_na_count / df_total_val * 100
@@ -60,23 +42,14 @@ na_perc
 '''around 11% of the data is NA`s, hence going to impute them'''
 
 
-# In[7]:
-
-
 df_rep = df[["age","bp","sg","al","su","bgr","bu","sc","sod","pot","hemo"]]
 df_rep.hist()
-
-
-# In[8]:
-
 
 df_rep.boxplot(column=["age","bp","sg","al","su","bgr","bu","sc","sod","pot","hemo"] )
 
 
 # Since there are presence of outliers and the distribution of the variables are skewed,
-# I am replacing NAs with median. Because mean is sensisitve to outliers.
-
-# In[9]:
+# I am replacing NAs with median. Because mean is sensitve to outliers.
 
 
 '''replaced NANs with mode'''
@@ -84,16 +57,7 @@ for i in df:
     df[i].fillna(df[i].mode()[0],inplace = True)
     print(i)
 
-
-
-# In[10]:
-
-
 df.isna().sum()
-
-
-# In[11]:
-
 
 "remove outliers"
 def cap_data(df):
@@ -110,45 +74,34 @@ def cap_data(df):
 final_df=cap_data(df)
 final_df
 
-
-# In[12]:
-
-
 df_rep_2 = df[["age","bp","sg","al","su","bgr","bu","sc","sod","pot","hemo"]]
 df_rep_2.hist()
 
-
-# In[13]:
-
-
-'''qqplot'''
+'''plot'''
 fig, axs = plt.subplots(4,4, figsize=(15, 6), facecolor='w', edgecolor='k')
 fig.subplots_adjust(hspace = .5, wspace=.001)
 for ax, d in zip(axs.ravel(), df_rep_2):
 
        stats.probplot(df[d], plot=ax)
-
-       #ax.set_titl(str(d))
-
 plt.show()
 
-
-# In[14]:
-
-
-##engine size, cylinder, weight, wheelbase, length, and MPG?
+###variables correlation(integer) along with the heatmap
 df_cor = df
 corr_matrix = df_cor.corr()
 sns.heatmap(corr_matrix, annot=True)
 plt.show()
 
-
-# In[20]:
-
+'''now the entire data set will be put through analysis using a single class with multiple functions
+ to understand the parametric and non parametric test results. the functions in class decides 
+ what variables are dependent and independent along with their data format and assign these 
+ variables to respective parametric or non paramteric correlation tests'''
 
 class stats2:
+    '''defining df'''
     def __init__(self,dataframe):
         self.df = dataframe
+
+    '''tells the col data type'''
         
     def auto_determine(self,col_name):
         return str(self.df[col_name].dtype)
@@ -165,8 +118,9 @@ class stats2:
                 outcome[col]= type_col
         
         return pred,outcome
-   
-    def our_pred_dtypes(self,outcome): # when x and y dataset not available
+
+    '''distinguishing between dependent and independent variables'''
+    def our_pred_dtypes(self,outcome):
         columns = self.df.columns
         pred = {}
         outcomes = {}
@@ -179,7 +133,8 @@ class stats2:
                 outcomes[col]= type_col
                 
         return pred,outcomes
-                       
+
+    '''checks the variable distribution, gives the message whether it is or not'''
     def shapiro_wilk_test(self,predictor,alpha = 0.05):# output is irrelevant here
     # test the null hypothesis for columns given in `cols` of the dataframe `df` under significance level `alpha`.
         fun_stats ={"Predictor" :predictor,"Testname":"Shapiro wilk test","Performance stat Raw":None,"comment":" "}
@@ -192,7 +147,8 @@ class stats2:
             fun_stats["comment"] ="The variable is normally distributed"
         
         return fun_stats
-    
+
+    '''Gives the message what kurtosis is the variable is based on the alpha set'''
     def kur(self,predictor,alpha= 3): 
         fun_stats={"Predictor":predictor,"Testname":"Kurtosis","Performance stat Raw":None,"comment": " "}
         col = predictor
@@ -206,7 +162,8 @@ class stats2:
             fun_stats["comment"]= "The variable",predictor,"is leptokurtic, since it is beyond 3"
             
         return fun_stats
-            
+
+    '''gives the message on skewness based on the alpha between <0, 0> <1, >1'''
     def skew(self,predictor,alpha = (-0.5,0.5)): #output variable is irrelevant here
         fun_stats={"Predictor":predictor,"Testname":"skewness","Performance stat Raw":None,"comment":" "}
         col = predictor
@@ -220,7 +177,8 @@ class stats2:
             fun_stats["comment"]= "The variable is positively skewed, that is high data concentration on the left side of the graph"
         return fun_stats
             
-             
+    '''gives the message of manwhitney result. Manwhitney is the alternative to t-test
+    when the variable is not normally distributes'''
     def man_whit(self,predictor,outcome,alpha = 0.5): 
         fun_stats = {"Predictor":predictor,"outcome":outcome,"Testname":"skewness","Performance stat Raw":None,"keep":False,"comment":" "}
         col = predictor
@@ -233,8 +191,8 @@ class stats2:
             fun_stats["comment"] = "The variables are not correlated"
             
         return fun_stats
-    
-  
+
+    '''multiple variable normally distributed'''
     def an_ova(self,predictor1,predictor2,predictor3,outcome, alpha = 0.05):
         fun_stats = {'outcome':outcome,"Predictor":[predictor1,predictor2,predictor3],"Testname":"ANOVA","Performance stat Raw":None,"keep":False,"comment":" "}
         col = [predictor1,predictor2,predictor3]
@@ -247,7 +205,7 @@ class stats2:
             fun_stats["comment"]="The varriables are correlated, since the pvalue is:" + str(col) + "which is more than or equalt to" + str(alpha)
         return fun_stats
         
-    
+    '''test between categorical - categorical variable'''
     def chi_sq_tst(self,predictor,outcome,alpha = 0.5):
         fun_stats = {"Predictor":predictor,'outcome':outcome,"Testname":"CHI-SQ","Performance stat Raw":None,"keep":False,"comment":" "}
         data_crosstab = pd.crosstab(self.df[predictor],
@@ -261,7 +219,8 @@ class stats2:
         else:
             fun_stats["comment"]='The variables are correlated, since pvalue is:' + str(p) + "which is more than:" + str(alpha)
         return fun_stats
-    
+
+    '''test between 2 numerical normall distributed variables'''
     def pearson(self,predictor,outcome,alpha = 0.6):
         fun_stats = {"Predictor":predictor,'outcome':outcome,"Testname":"Pearson","Performance stat Raw":None,"keep":False,"comment":" "}
         _,p = pearsonr(self.df[predictor], self.df[outcome])
@@ -274,7 +233,7 @@ class stats2:
             
         return fun_stats
         
-    
+    '''rank test- numerical to categorical'''
     def ken_dall(self,predictor,outcome,alpha = 0.5):
         fun_stats = {"Predictor":predictor,'outcome':outcome,"Testname":"Kendal","Performance stat Raw":None,"keep":False,"comment":" "}
         _,p = kendalltau(self.df[predictor], self.df[outcome])
@@ -286,7 +245,8 @@ class stats2:
             fun_stats["comment"]='The variables are not correlated, since pvalue is:'+ str(p) + " which is more than " + str(alpha)
             
         return fun_stats
-    
+
+    '''two not normally distributed variables'''
     def spear_man(self,predictor,outcome,alpha = 0.5):
         fun_stats = {"Predictor":predictor,'outcome':outcome,"Testname":"Kendal","Performance stat Raw":None,"keep":False,"comment":" "}
         _,p = spearmanr(self.df[predictor], self.df[outcome])
@@ -299,7 +259,8 @@ class stats2:
             fun_stats["comment"]='the variables are not correlated, since pvalue is:'+ str(p) + 'which is more than:' + str(alpha)
             
         return fun_stats
-    
+
+    '''categorical to categorical variable test'''
     def mutual_info(self,predictor,outcome,alpha = 0.5):
         x = np.array(self.df[predictor].astype("category").cat.codes).reshape(-1,1)
         y = self.df[outcome]
@@ -314,7 +275,9 @@ class stats2:
             fun_stats["comment"]='the variables are not correlated, since pvalue is:'+ str(mi_scores) + 'which is less than:' + str(alpha)
             
         return fun_stats                          
-          
+
+        '''this brings all the above tests together to give out the result of all the variables
+        in terms of correlation'''
     def main_brain_sys(self,dataframe,predictors,outcomes):
         def check_number(type_arg):
             return ("float" in type_arg or "int" in type_arg)
@@ -340,10 +303,10 @@ class stats2:
                     
         return stats_result
 
-
-# In[21]:
-
-
+'''have used the last function of to find the correlation for the
+variables in the entire kidney dataset. I have not done transformed 
+any categorical data to numerical. The dataset is in its original form
+when introduced to this fucntion'''
 for_stats = stats2(df)
 predict,outcome = for_stats.our_pred_dtypes("classification")
 for_stats.main_brain_sys(df,predict,outcome)
