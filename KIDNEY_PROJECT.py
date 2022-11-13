@@ -217,9 +217,9 @@ class stats2:
         fun_stats["Performance stat Raw"]= p
         if p<=alpha:
             fun_stats["keep"]=True
-            fun_stats["comment"]="The variables are not correlated, since the pvalue is: " + str(p) + "which is  less than:" + str(alpha) 
+            fun_stats["comment"]="The variables are correlated, since the pvalue is: " + str(p) + "which is  less than:" + str(alpha)
         else:
-            fun_stats["comment"]='The variables are correlated, since pvalue is:' + str(p) + "which is more than:" + str(alpha)
+            fun_stats["comment"]='The variables are not correlated, since pvalue is:' + str(p) + "which is more than:" + str(alpha)
         return fun_stats
 
     '''2 NUMERICAL VARIABLES CORRELATION TEST'''
