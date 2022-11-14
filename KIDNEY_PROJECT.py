@@ -20,6 +20,8 @@ from scipy.stats import f_oneway
 from scipy.stats import spearmanr
 from sklearn.feature_selection import mutual_info_classif
 from scipy.stats import pearsonr
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 '''reading kidney file'''
 data = pd.read_csv("kidney_disease.csv")
@@ -312,4 +314,80 @@ class stats2:
 for_stats = stats2(df)
 predict,outcome = for_stats.our_pred_dtypes("classification")
 for_stats.main_brain_sys(df,predict,outcome)
+
+
+'''APPLYING PCA:
+standardized all the data. basically if not standaridized it will take the
+larger number column and the principal components will be extracted around that. hence, the dataset needs to
+standardized.'''
+scaler = StandardScaler()
+data3_std = scaler.fit_transform(final_df)
+
+'''pca will construct exactly the same number of variables as is in the original dataset, if it is not mentioned.
+fit_transform takes variance and sd from the data and standardizes according to these metrics(selection of number of variables).'''
+pca = PCA()
+pca.fit_transform(data3_std)
+
+'''gives prinicipal components, remember the 1st is larger than followed next larger,descending'''
+pca.explained_variance_ratio_
+
+plt.figure(figsize = (20,15))
+components = ["component 1", "component 2","component 3", "component 4", "component 5", "component 6", "component 7", "component 8",
+             "component 9", "component 10", "component 11","component 12"," component 13","component 14","component 15",
+             "component 16", "component 17", "component 18", "component 19","component 20","component 21","component 22",
+             "component 23", "component 24", "component 25"]
+var_exp = pca.explained_variance_ratio_
+plt.bar(components, var_exp)
+plt.title("explnd variance by prinicpal variance")
+plt.xlabel("Principal components")
+plt.ylabel("explnd variance ratio")
+plt.show()
+
+'''to see cumulative variance in components. means variance captured until certain component'''
+'''below graph explains following:
+1 component at 20% variance 13rd= 80%. That is to say inclusive of 1,to 13 component, we have 80%(cumulative).
+we need atleast 80% features.(Threshold value). So we pick 13 components.these components are linear combination of initial variables.'''
+plt.figure(figsize = (10,6))
+plt.plot(range(1,26),pca.explained_variance_ratio_.cumsum(), marker="o", linestyle= "--" )
+plt.title("explnd variance by prinicpal variance")
+plt.xlabel("Number of components")
+plt.ylabel("cumulative explnd variance")
+plt.show()
+
+pca = PCA(n_components = 13)
+
+
+pca.fit(data3_std)
+
+
+pca.components_
+
+df_pca_comp = pd.DataFrame(data = pca.components_,
+                          columns = final_df.columns.values,
+                           index = ["component 1","component 2"," component 3", "component 4","component 5",
+                                   "component 6", "component 7", "component 8", "component 9",
+                                   "compnent 10", "component 11", "component 12", "component 13"])
+df_pca_comp #CORELATION COEFFICIENTS BY DEFINITIONTAKE VALUES BETWEEN -1 AND +1
+
+plt.figure(figsize=(15,8))
+sns.heatmap(df_pca_comp,
+           vmin=-1,
+           vmax=1,
+           cmap='RdBu',
+           annot=True)
+plt.yticks([0,1,2,3,4,5,6,7,8,9,10,11,12],
+          ['Component 1','Component 2','Component 3','Component 4',"Component 5",
+          "Component 6", "Component 7", "Component 8","Component 9","Component 10",
+          "Component 11", "Component 12","Component 13"],
+          rotation=45,
+          fontsize=9)
+
+plt.show()
+
+'''As you can see, there is more presence of  blue boxes in component 1 and it reduces 
+as they go low in the components'''
+
+pca.transform(data3_std)#produc kmean out of this
+
+
 
