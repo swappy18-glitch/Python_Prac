@@ -30,6 +30,10 @@ df
 
 df.info()
 
+'''replacing erroneous ckd value in the classification column'''
+df['classification'] = df['classification'].replace(['ckd\t'], 'ckd')
+
+df.classification.value_counts()
 '''Total NAs'''
 df_na_count = df.isna().sum().sum()
 df_na_count
@@ -315,13 +319,12 @@ for_stats = stats2(df)
 predict,outcome = for_stats.our_pred_dtypes("classification")
 for_stats.main_brain_sys(df,predict,outcome)
 
-
 '''APPLYING PCA:
 standardized all the data. basically if not standaridized it will take the
 larger number column and the principal components will be extracted around that. hence, the dataset needs to
 standardized.'''
 scaler = StandardScaler()
-data3_std = scaler.fit_transform(final_df)
+data3_std = scaler.fit_transform(final_ckd)
 
 '''pca will construct exactly the same number of variables as is in the original dataset, if it is not mentioned.
 fit_transform takes variance and sd from the data and standardizes according to these metrics(selection of number of variables).'''
@@ -345,8 +348,8 @@ plt.show()
 
 '''to see cumulative variance in components. means variance captured until certain component'''
 '''below graph explains following:
-1 component at 20% variance 13rd= 80%. That is to say inclusive of 1,to 13 component, we have 80%(cumulative).
-we need atleast 80% features.(Threshold value). So we pick 13 components.these components are linear combination of initial variables.'''
+1 component at 5% variance 8 component= 80%. That is to say inclusive of 1 to 8 components, we have 80%(cumulative).
+we need atleast 80% features.(Threshold value). So we pick 8 components.these components are linear combination of initial variables.'''
 plt.figure(figsize = (10,6))
 plt.plot(range(1,26),pca.explained_variance_ratio_.cumsum(), marker="o", linestyle= "--" )
 plt.title("explnd variance by prinicpal variance")
@@ -354,19 +357,16 @@ plt.xlabel("Number of components")
 plt.ylabel("cumulative explnd variance")
 plt.show()
 
-pca = PCA(n_components = 13)
-
+pca = PCA(n_components = 8)
 
 pca.fit(data3_std)
-
 
 pca.components_
 
 df_pca_comp = pd.DataFrame(data = pca.components_,
                           columns = final_df.columns.values,
                            index = ["component 1","component 2"," component 3", "component 4","component 5",
-                                   "component 6", "component 7", "component 8", "component 9",
-                                   "compnent 10", "component 11", "component 12", "component 13"])
+                                   "component 6", "component 7", "component 8"])
 df_pca_comp #CORELATION COEFFICIENTS BY DEFINITIONTAKE VALUES BETWEEN -1 AND +1
 
 plt.figure(figsize=(15,8))
@@ -375,10 +375,9 @@ sns.heatmap(df_pca_comp,
            vmax=1,
            cmap='RdBu',
            annot=True)
-plt.yticks([0,1,2,3,4,5,6,7,8,9,10,11,12],
+plt.yticks([0,1,2,3,4,5,6,7],
           ['Component 1','Component 2','Component 3','Component 4',"Component 5",
-          "Component 6", "Component 7", "Component 8","Component 9","Component 10",
-          "Component 11", "Component 12","Component 13"],
+          "Component 6", "Component 7", "Component 8"],
           rotation=45,
           fontsize=9)
 
@@ -389,5 +388,240 @@ as they go low in the components'''
 
 pca.transform(data3_std)#produc kmean out of this
 
+'''extract the columns based on the stats,heat map,PCA'''
+df_mod = final_df[["age","sg","bu","sc","sod","pot","hemo","pcv","wc","rc","classification"]]
+df_mod
+
+X = np.asarray(df_mod.iloc[:,:-1])
+y = np.asarray(df_mod.iloc[:,-1])
+
+counter = Counter(y)
+#plotting pie chart of distrbution
+plt.pie([counter[0],counter[1]],labels=['nockd','ckd'])
+
+'''we will be using svm which is great in handling imbalance dataset and also for the small datasets.
+SVM classifies at accurate hyperplane which differenctiate classes. Class_weight assigns weights 
+to the features according to their imortance, that way imbalance is handled. Usually, all features
+are given equal importance'''
+
+model = SVC(class_weight='balanced')
+# define evaluation procedure
+cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+# evaluate model
+scores = cross_val_score(model, X, y, scoring='roc_auc', cv=cv, n_jobs=-1)
+# summarize performance
+print('Mean Accuracy: %.3f' % mean(scores))
+
+'''lets see how its seems if we do not handle the imbalance aspect'''
+model = SVC(gamma='scale')
+# define evaluation procedure
+cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+# evaluate model
+scores = cross_val_score(model, X, y, scoring='roc_auc', cv=cv, n_jobs=-1)
+# summarize performance
+print('Mean Accuracy: %.3f' % mean(scores))
+
+'''There is more than 1 percent difference between handling imbalance and not handling imbalance'''
+
+'''how about trying decision tree before handling imbalance'''
+model = DecisionTreeClassifier()
+cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+# evaluate model
+scores = cross_val_score(model, X, y, scoring='roc_auc', cv=cv, n_jobs=-1)
+# summarize performance
+print('Mean ROC AUC: %.3f' % mean(scores))
+
+'''After handling imbalance'''
+model = DecisionTreeClassifier(class_weight='balanced')
+cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+# evaluate model
+scores = cross_val_score(model, X, y, scoring='roc_auc', cv=cv, n_jobs=-1)
+# summarize performance
+print('Mean ROC AUC: %.3f' % mean(scores))
+
+'''as we can see there is an evident improvement after handling imbalance'''
+
+X = df_mod.iloc[:,:-1]
+y = df_mod.iloc[:,-1]
+
+'''lets continue with full fledge assessment of the dataset'''
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 0)
+
+X_train.shape, X_test.shape
+
+cols = X_train.columns
+X_train = pd.DataFrame(X_train, columns= cols)
+
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+
+X_train = scaler.fit_transform(X_train)
+
+X_test = scaler.transform(X_test)
+
+X_test = pd.DataFrame(X_test, columns=[cols])
+
+X_train = pd.DataFrame(X_train, columns=[cols])
+
+X_train.describe()
+
+# import SVC classifier
+from sklearn.svm import SVC
 
 
+# import metrics to compute accuracy
+from sklearn.metrics import accuracy_score
+
+
+# instantiate classifier with default hyperparameters
+svc=SVC(class_weight = "balanced")
+
+
+# fit classifier to training set
+svc.fit(X_train,y_train)
+
+
+# make predictions on test set
+y_pred=svc.predict(X_test)
+
+
+# compute and print accuracy score
+print('Model accuracy score: {0:0.4f}'. format(accuracy_score(y_test, y_pred)))
+
+'''compare the train-set and test-set accuracy '''
+y_pred_train = svc.predict(X_train)
+
+print('Training-set accuracy score: {0:0.4f}'. format(accuracy_score(y_train, y_pred_train)))
+
+y_pred_test=svc.predict(X_test)
+
+'''checking overfitting - no overfitting since train and test score almost comparable'''
+print('Training set score: {:.4f}'.format(svc.score(X_train, y_train)))
+
+print('Test set score: {:.4f}'.format(svc.score(X_test, y_test)))
+
+y_test.value_counts()
+
+'''confusion matrix'''
+# Print the Confusion Matrix and slice it into four pieces
+
+from sklearn.metrics import confusion_matrix
+
+cm = confusion_matrix(y_test, y_pred_test)
+
+print('Confusion matrix\n\n', cm)
+
+print('\nTrue Positives(TP) = ', cm[0,0])
+
+print('\nTrue Negatives(TN) = ', cm[1,1])
+
+print('\nFalse Positives(FP) = ', cm[0,1])
+
+print('\nFalse Negatives(FN) = ', cm[1,0])
+
+# visualize confusion matrix with seaborn heatmap
+
+cm_matrix = pd.DataFrame(data=cm, columns=['Actual Positive:1', 'Actual Negative:0'],
+                                 index=['Predict Positive:1', 'Predict Negative:0'])
+
+sns.heatmap(cm_matrix, annot=True, fmt='d', cmap='YlGnBu')
+
+from sklearn.metrics import classification_report
+
+print(classification_report(y_test, y_pred_test))
+
+TP = cm[0,0]
+TN = cm[1,1]
+FP = cm[0,1]
+FN = cm[1,0]
+
+
+# print classification accuracy
+
+
+classification_accuracy = (TP + TN) / float(TP + TN + FP + FN)
+
+print('Classification accuracy : {0:0.4f}'.format(classification_accuracy))
+
+# print classification error
+
+classification_error = (FP + FN) / float(TP + TN + FP + FN)
+
+print('Classification error : {0:0.4f}'.format(classification_error))
+
+# print precision score
+'''Precision is the percentage of correctly 
+predicted positive outcomes out of all the predicted positive outcomes. It is more focused
+on positive class than the negative class.'''
+
+precision = TP / float(TP + FP)
+
+
+print('Precision : {0:0.4f}'.format(precision))
+
+'''Recall is the percentage of correctly predicted 
+positive outcomes out of all the actual positive outcomes'''
+recall = TP / float(TP + FN)
+
+print('Recall or Sensitivity : {0:0.4f}'.format(recall))
+
+'''True Positive Rate is nothing but Recall.'''
+true_positive_rate = TP / float(TP + FN)
+
+
+print('True Positive Rate : {0:0.4f}'.format(true_positive_rate))
+
+
+'''false rate'''
+false_positive_rate = FP / float(FP + TN)
+
+print('False Positive Rate : {0:0.4f}'.format(false_positive_rate))
+
+
+specificity = TN / (TN + FP)
+
+print('Specificity : {0:0.4f}'.format(specificity))
+
+# plot ROC Curve
+
+from sklearn.metrics import roc_curve
+
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_test)
+
+plt.figure(figsize=(6,4))
+
+plt.plot(fpr, tpr, linewidth=2)
+
+plt.plot([0,1], [0,1], 'k--' )
+
+plt.rcParams['font.size'] = 12
+
+plt.title('ROC curve for Predicting a CKD classifier')
+
+plt.xlabel('False Positive Rate (1 - Specificity)')
+
+plt.ylabel('True Positive Rate (Sensitivity)')
+
+plt.show()
+
+# compute ROC AUC
+
+from sklearn.metrics import roc_auc_score
+
+ROC_AUC = roc_auc_score(y_test, y_pred_test)
+
+print('ROC AUC : {:.4f}'.format(ROC_AUC))
+
+# calculate cross-validated ROC AUC
+
+from sklearn.model_selection import cross_val_score
+
+Cross_validated_ROC_AUC = cross_val_score(svc, X_train, y_train, cv=10, scoring='roc_auc').mean()
+
+print('Cross validated ROC AUC : {:.4f}'.format(Cross_validated_ROC_AUC))
+
+
+'''Roc and Auc with cross validation proves that svm is an excellent classifier.'''
