@@ -22,6 +22,21 @@ from sklearn.feature_selection import mutual_info_classif
 from scipy.stats import pearsonr
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from numpy import where, mean
+from sklearn.datasets import make_classification
+from sklearn.svm import SVC
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.tree import DecisionTreeClassifier
+from collections import Counter
+import warnings
+warnings.filterwarnings("ignore")
+# import SVC classifier
+from sklearn.svm import SVC
+
+# import metrics to compute accuracy
+from sklearn.metrics import accuracy_score
+
 
 '''reading kidney file'''
 data = pd.read_csv("kidney_disease.csv")
@@ -319,6 +334,28 @@ for_stats = stats2(df)
 predict,outcome = for_stats.our_pred_dtypes("classification")
 for_stats.main_brain_sys(df,predict,outcome)
 
+catCols = [col for col in final_df.columns if final_df[col].dtype=="O"]
+from sklearn.preprocessing import LabelEncoder
+lb_make = LabelEncoder()
+for item in catCols:
+    final_df[item] = lb_make.fit_transform(final_df[item])
+
+final_df.classification.value_counts()
+
+cat_columns = final_df.select_dtypes(['object']).columns
+
+'''convert all categorical variables to numeric and slicing only the data with CKD = 1'''
+final_df[cat_columns] =final_df[cat_columns].apply(lambda x: pd.factorize(x)[0])
+final_ckd = final_df[final_df["classification"]== 1]
+final_ckd
+
+plt.figure(figsize=(15,8))
+df_cor_2 = final_ckd
+corr_matrix_2 = df_cor_2.corr()
+sns.heatmap(corr_matrix_2, annot=True)
+plt.show()
+
+
 '''APPLYING PCA:
 standardized all the data. basically if not standaridized it will take the
 larger number column and the principal components will be extracted around that. hence, the dataset needs to
@@ -468,25 +505,14 @@ X_train = pd.DataFrame(X_train, columns=[cols])
 
 X_train.describe()
 
-# import SVC classifier
-from sklearn.svm import SVC
-
-
-# import metrics to compute accuracy
-from sklearn.metrics import accuracy_score
-
-
 # instantiate classifier with default hyperparameters
 svc=SVC(class_weight = "balanced")
-
 
 # fit classifier to training set
 svc.fit(X_train,y_train)
 
-
 # make predictions on test set
 y_pred=svc.predict(X_test)
-
 
 # compute and print accuracy score
 print('Model accuracy score: {0:0.4f}'. format(accuracy_score(y_test, y_pred)))
